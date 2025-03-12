@@ -1,71 +1,57 @@
 package com.scnu.wechatminiprogrambackservice.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.scnu.wechatminiprogrambackservice.entity.UserPO;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.scnu.wechatminiprogrambackservice.dto.LoginParam;
+import com.scnu.wechatminiprogrambackservice.dto.UserDTO;
+import com.scnu.wechatminiprogrambackservice.entity.User;
 import com.scnu.wechatminiprogrambackservice.mapper.UserMapper;
 import com.scnu.wechatminiprogrambackservice.service.UserService;
+import com.scnu.wechatminiprogrambackservice.util.BeanCopyUtils;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 /**
  * 用户服务实现类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-    private final UserMapper userMapper;
-
-    @Override
-    public UserPO getUserById(Long id) {
-        return userMapper.selectById(id);
-    }
+    @Resource
+    private BCryptPasswordEncoder passwordEncoder;
 
     @Override
-    public UserPO getUserByUsername(String username) {
-        return userMapper.selectByUsername(username);
-    }
+    public UserDTO login(LoginParam loginParam) {
+        // 根据用户名查询用户
+        User user = baseMapper.selectByUsername(loginParam.getUsername());
 
-    @Override
-    public IPage<UserPO> getUserPage(Page<UserPO> page, String keyword) {
-        LambdaQueryWrapper<UserPO> queryWrapper = new LambdaQueryWrapper<>();
-
-        // 添加搜索条件
-        if (StringUtils.hasText(keyword)) {
-            queryWrapper.like(UserPO::getUsername, keyword)
-                    .or()
-                    .like(UserPO::getNickname, keyword);
+        // 用户不存在或已被禁用
+        if (user == null || user.getStatus() == 0) {
+            return null;
         }
 
-        // 添加排序
-        queryWrapper.orderByDesc(UserPO::getCreateTime);
+        // 验证密码
+        if (!passwordEncoder.matches(loginParam.getPassword(), user.getPassword())) {
+            return null;
+        }
 
-        return userMapper.selectPage(page, queryWrapper);
+        // 转换为DTO
+        return BeanCopyUtils.copyObject(user, UserDTO.class);
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createUser(UserPO user) {
-        // 业务逻辑检查（如检查用户名是否存在）可以在这里添加
-        userMapper.insert(user);
-        return user.getId();
+    public UserDTO getUserById(Long userId) {
+        User user = getById(userId);
+        return user != null ? BeanCopyUtils.copyObject(user, UserDTO.class) : null;
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean updateUser(UserPO user) {
-        return userMapper.updateById(user) > 0;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean deleteUser(Long id) {
-        return userMapper.deleteById(id) > 0;
+    public UserDTO getUserByUsername(String username) {
+        User user = baseMapper.selectByUsername(username);
+        return user != null ? BeanCopyUtils.copyObject(user, UserDTO.class) : null;
     }
 }

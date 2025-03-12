@@ -1,54 +1,36 @@
 package com.scnu.wechatminiprogrambackservice.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.scnu.wechatminiprogrambackservice.entity.UserPO;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.scnu.wechatminiprogrambackservice.dto.LoginParam;
+import com.scnu.wechatminiprogrambackservice.dto.UserDTO;
+import com.scnu.wechatminiprogrambackservice.entity.User;
 
 /**
  * 用户服务接口
  */
-public interface UserService {
+public interface UserService extends IService<User> {
 
     /**
-     * 根据ID查询用户
-     * @param id 用户ID
-     * @return 用户对象
+     * 用户登录
+     *
+     * @param loginParam 登录参数
+     * @return 登录成功返回用户信息，失败返回null
      */
-    UserPO getUserById(Long id);
+    UserDTO login(LoginParam loginParam);
 
     /**
-     * 根据用户名查询用户
+     * 根据用户ID获取用户信息
+     *
+     * @param userId 用户ID
+     * @return 用户DTO
+     */
+    UserDTO getUserById(Long userId);
+
+    /**
+     * 根据用户名获取用户信息
+     *
      * @param username 用户名
-     * @return 用户对象
+     * @return 用户DTO
      */
-    UserPO getUserByUsername(String username);
-
-    /**
-     * 分页查询用户列表
-     * @param page 分页参数
-     * @param keyword 搜索关键词（用户名或昵称）
-     * @return 分页用户列表
-     */
-    IPage<UserPO> getUserPage(Page<UserPO> page, String keyword);
-
-    /**
-     * 创建用户
-     * @param user 用户对象
-     * @return 创建的用户ID
-     */
-    Long createUser(UserPO user);
-
-    /**
-     * 更新用户信息
-     * @param user 用户对象
-     * @return 是否更新成功
-     */
-    boolean updateUser(UserPO user);
-
-    /**
-     * 删除用户
-     * @param id 用户ID
-     * @return 是否删除成功
-     */
-    boolean deleteUser(Long id);
+    UserDTO getUserByUsername(String username);
 }

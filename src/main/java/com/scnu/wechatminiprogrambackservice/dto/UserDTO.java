@@ -1,14 +1,16 @@
-package com.scnu.wechatminiprogrambackservice.entity;
+package com.scnu.wechatminiprogrambackservice.dto;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.io.Serializable;
 
 /**
- * 用户展示对象
+ * 用户数据传输对象
  */
 @Data
-public class UserVO {
+public class UserDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * 用户ID
@@ -26,22 +28,17 @@ public class UserVO {
     private String nickname;
 
     /**
+     * A用户头像URL
+     */
+    private String avatar;
+
+    /**
      * 手机号
      */
     private String phone;
 
     /**
-     * 用户头像URL
-     */
-    private String avatar;
-
-    /**
      * 用户状态：0-禁用，1-正常
      */
     private Integer status;
-
-    /**
-     * 创建时间
-     */
-    private LocalDateTime createTime;
 }

@@ -1,110 +1,213 @@
 package com.scnu.wechatminiprogrambackservice.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.scnu.wechatminiprogrambackservice.common.Result;
-import com.scnu.wechatminiprogrambackservice.entity.UserPO;
+import com.scnu.wechatminiprogrambackservice.dto.UserDTO;
+import com.scnu.wechatminiprogrambackservice.entity.User;
+import com.scnu.wechatminiprogrambackservice.model.R;
 import com.scnu.wechatminiprogrambackservice.service.UserService;
-import com.scnu.wechatminiprogrambackservice.entity.UserVO;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.annotation.Resource;
+import com.scnu.wechatminiprogrambackservice.util.BeanCopyUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 用户控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
-@Tag(name = "用户管理", description = "用户相关接口")
 public class UserController {
 
-    @Resource
     private final UserService userService;
+    private final BCryptPasswordEncoder passwordEncoder;
 
+    /**
+     * 分页查询用户列表
+     */
+    @GetMapping("/list")
+    public R<Page<UserDTO>> list(
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+            @RequestParam(value = "username", required = false) String username,
+            @RequestParam(value = "phone", required = false) String phone,
+            @RequestParam(value = "status", required = false) Integer status) {
+
+        // 构建分页对象
+        Page<User> page = new Page<>(pageNum, pageSize);
+
+        // 构建查询条件
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 添加查询条件
+        if (StringUtils.hasText(username)) {
+            queryWrapper.like(User::getUsername, username);
+        }
+        if (StringUtils.hasText(phone)) {
+            queryWrapper.like(User::getPhone, phone);
+        }
+        if (status != null) {
+            queryWrapper.eq(User::getStatus, status);
+        }
+
+        // 设置排序
+        queryWrapper.orderByDesc(User::getCreateTime);
+
+        // 执行查询
+        userService.page(page, queryWrapper);
+
+        // 转换结果
+        List<UserDTO> userDTOList = BeanCopyUtils.copyList(page.getRecords(), UserDTO.class);
+        Page<UserDTO> resultPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        resultPage.setRecords(userDTOList);
+
+        return R.success(resultPage);
+    }
+
+    /**
+     * 根据ID查询用户
+     */
     @GetMapping("/{id}")
-    @Operation(summary = "根据ID获取用户信息")
-    public Result<UserVO> getUserById(
-            @Parameter(description = "用户ID", required = true)
-            @PathVariable Long id) {
-        UserPO user = userService.getUserById(id);
-        if (user == null) {
-            return Result.error("用户不存在", 404);
-        }
-        UserVO userVO = convertToVO(user);
-        return Result.success(userVO);
-    }
+    public R<UserDTO> getById(@PathVariable Long id) {
+        UserDTO userDTO = userService.getUserById(id);
 
-    @GetMapping("/page")
-    @Operation(summary = "分页获取用户列表")
-    public Result<IPage<UserVO>> getUserPage(
-            @Parameter(description = "页码", required = true)
-            @RequestParam(defaultValue = "1") Integer current,
-            @Parameter(description = "每页记录数", required = true)
-            @RequestParam(defaultValue = "10") Integer size,
-            @Parameter(description = "搜索关键词（用户名或昵称）")
-            @RequestParam(required = false) String keyword) {
-        Page<UserPO> page = new Page<>(current, size);
-        IPage<UserPO> userPage = userService.getUserPage(page, keyword);
-
-        // 转换为VO对象
-        IPage<UserVO> voPage = userPage.convert(this::convertToVO);
-        return Result.success(voPage);
-    }
-
-    @PostMapping
-    @Operation(summary = "创建用户")
-    public Result<Long> createUser(@RequestBody UserPO user) {
-        Long userId = userService.createUser(user);
-        return Result.success(userId, "用户创建成功");
-    }
-
-    @PutMapping
-    @Operation(summary = "更新用户信息")
-    public Result<Void> updateUser(@RequestBody UserPO user) {
-        if (user.getId() == null) {
-            return Result.error("用户ID不能为空");
-        }
-
-        boolean updated = userService.updateUser(user);
-        if (updated) {
-            return Result.success(null, "用户更新成功");
+        if (userDTO != null) {
+            return R.success(userDTO);
         } else {
-            return Result.error("用户更新失败");
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    @Operation(summary = "删除用户")
-    public Result<Void> deleteUser(
-            @Parameter(description = "用户ID", required = true)
-            @PathVariable Long id) {
-        boolean deleted = userService.deleteUser(id);
-        if (deleted) {
-            return Result.success(null, "用户删除成功");
-        } else {
-            return Result.error("用户删除失败");
+            return R.error(404, "用户不存在");
         }
     }
 
     /**
-     * 将User实体转换为UserVO
-     * @param user 用户实体
-     * @return 用户VO
+     * 新增用户
      */
-    private UserVO convertToVO(UserPO user) {
-        if (user == null) {
-            return null;
+    @PostMapping
+    public R<UserDTO> save(@RequestBody User user) {
+        // 检查用户名是否已存在
+        UserDTO existingUser = userService.getUserByUsername(user.getUsername());
+        if (existingUser != null) {
+            return R.error(400, "用户名已存在");
         }
-        UserVO userVO = new UserVO();
-        BeanUtils.copyProperties(user, userVO);
-        return userVO;
+
+        // 加密密码
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        // 保存用户
+        boolean success = userService.save(user);
+
+        if (success) {
+            UserDTO userDTO = BeanCopyUtils.copyObject(user, UserDTO.class);
+            return R.success("用户创建成功", userDTO);
+        } else {
+            return R.error("用户创建失败");
+        }
+    }
+
+    /**
+     * 更新用户
+     */
+    @PutMapping("/{id}")
+    public R<UserDTO> update(@PathVariable Long id, @RequestBody User user) {
+        // 检查用户是否存在
+        User existingUser = userService.getById(id);
+        if (existingUser == null) {
+            return R.error(404, "用户不存在");
+        }
+
+        // 设置ID
+        user.setId(id);
+
+        // 如果密码字段不为空，则加密密码
+        if (StringUtils.hasText(user.getPassword())) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        } else {
+            // 否则，保持原密码不变
+            user.setPassword(existingUser.getPassword());
+        }
+
+        // 更新用户
+        boolean success = userService.updateById(user);
+
+        if (success) {
+            UserDTO userDTO = BeanCopyUtils.copyObject(user, UserDTO.class);
+            return R.success("用户更新成功", userDTO);
+        } else {
+            return R.error("用户更新失败");
+        }
+    }
+
+    /**
+     * 删除用户（逻辑删除）
+     */
+    @DeleteMapping("/{id}")
+    public R<String> delete(@PathVariable Long id) {
+        boolean success = userService.removeById(id);
+
+        if (success) {
+            return R.success("用户删除成功");
+        } else {
+            return R.error("用户删除失败");
+        }
+    }
+
+    /**
+     * 修改用户状态
+     */
+    @PatchMapping("/{id}/status/{status}")
+    public R<String> updateStatus(@PathVariable Long id, @PathVariable Integer status) {
+        // 检查状态值
+        if (status != 0 && status != 1) {
+            return R.error(400, "无效的状态值");
+        }
+
+        // 构建更新对象
+        User user = new User();
+        user.setId(id);
+        user.setStatus(status);
+
+        // 更新状态
+        boolean success = userService.updateById(user);
+
+        if (success) {
+            return R.success(status == 1 ? "用户已启用" : "用户已禁用");
+        } else {
+            return R.error("状态更新失败");
+        }
+    }
+
+    /**
+     * 重置密码
+     */
+    @PatchMapping("/{id}/password/reset")
+    public R<String> resetPassword(@PathVariable Long id, @RequestParam String newPassword) {
+        // 检查密码是否为空
+        if (!StringUtils.hasText(newPassword)) {
+            return R.error(400, "密码不能为空");
+        }
+
+        // 检查用户是否存在
+        User existingUser = userService.getById(id);
+        if (existingUser == null) {
+            return R.error(404, "用户不存在");
+        }
+
+        // 构建更新对象
+        User user = new User();
+        user.setId(id);
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+        // 更新密码
+        boolean success = userService.updateById(user);
+
+        if (success) {
+            return R.success("密码重置成功");
+        } else {
+            return R.error("密码重置失败");
+        }
     }
 }

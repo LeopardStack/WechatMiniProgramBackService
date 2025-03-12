@@ -1,4 +1,3 @@
-debug: true
 server:
   port: 8080
   servlet:
@@ -14,61 +13,53 @@ spring:
     url: jdbc:mysql://8.138.28.174:3306/app_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: app_user
     password: app_password
-    type: com.alibaba.druid.pool.DruidDataSource
-    druid:
-      # 初始连接数
-      initial-size: 5
-      # 最小连接池数量
-      min-idle: 5
-      # 最大连接池数量
-      max-active: 20
-      # 配置获取连接等待超时的时间(毫秒)
-      max-wait: 60000
-      # PSCache配置
-      pool-prepared-statements: true
-      max-pool-prepared-statement-per-connection-size: 20
-      # 配置监控统计拦截的filters
-      filters: stat,wall
-      # 慢SQL记录与合并
-#      connect-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
-      # Web监控配置
-      web-stat-filter:
-        enabled: true
-        url-pattern: /*
-        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
-      stat-view-servlet:
-        enabled: true
-        url-pattern: /druid/*
-        reset-enable: false
-        login-username: admin
-        login-password: admin123
+    hikari:
+      # 连接池最大连接数
+      maximum-pool-size: 20
+      # 空闲连接最小数量
+      minimum-idle: 5
+      # 空闲连接超时时间
+      idle-timeout: 30000
+      # 连接最大存活时间
+      max-lifetime: 1800000
+      # 连接超时时间
+      connection-timeout: 30000
+      # 测试连接是否可用的查询语句
+      connection-test-query: SELECT 1
 
-  # 文件上传配置
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 20MB
-
-  # Jackson配置
-  jackson:
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: GMT+8
-    serialization:
-      write-dates-as-timestamps: false
+  # Redis配置
   data:
     redis:
       host: 8.138.28.174
       port: 6379
       password: zy2025@
       database: 0
-      timeout: 10000
+      timeout: 10s
       lettuce:
         pool:
-          max-active: 200
+          max-active: 8
           max-wait: -1ms
-          max-idle: 10
+          max-idle: 8
           min-idle: 0
-      connect-timeout: 5000ms
+
+# Sa-Token配置
+sa-token:
+  # token名称
+  token-name: token
+  # token有效期（单位：秒），默认30天
+  timeout: 2592000
+  # 是否允许同一账号多地同时登录
+  is-concurrent: false
+  # 在多人登录同一账号时，是否共用一个token
+  is-share: false
+  # token风格
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: false
+  # jwt秘钥
+  jwt-secret-key: wechatminiprogrambackservice2025
+  # token前缀
+  token-prefix: "Bearer"
 
 # MyBatis Plus配置
 mybatis-plus:
@@ -80,109 +71,21 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
-      id-type: ASSIGN_ID  # 使用雪花算法ID
+      id-type: ASSIGN_ID
       logic-delete-field: is_deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
     banner: false
-
-# Sa-Token配置
-sa-token:
-  # token名称
-  token-name: token
-  # token有效期 (单位: 秒)
-  timeout: 2592000
-  # 是否允许同一账号多地同时登录
-  is-concurrent: false
-  # 在多人登录同一账号时，是否共用一个token
-  is-share: false
-  # token风格
-  token-style: uuid
-  # JWT配置
-  jwt-secret-key: wechatminiprogrambackservice2025zyz
-  # 自动续签
-  auto-renew: true
-  # token前缀
-  token-prefix: "Bearer"
-  # 是否输出操作日志
-  is-log: false
 
 # 日志配置
 logging:
   level:
     root: info
     com.scnu.wechatminiprogrambackservice: debug
-  file:
-    name: logs/application.log
-  logback:
-    rollingpolicy:
-      max-file-size: 10MB
-      max-history: 30
 
-# 自定义配置
-app:
-  # 用户相关配置
-  user:
-    default-password: 123456
-    avatar-storage-path: /data/avatars/
-  # 微信小程序配置
-  wx:
-    app-id: ${WX_APP_ID:your_app_id_here}
-    app-secret: ${WX_APP_SECRET:your_app_secret_here}
-  # 文件上传路径
-  upload:
-    path: /data/upload/
-  # 跨域配置
-  cors:
-    allowed-origins: "*"
-    allowed-methods: "*"
-    allowed-headers: "*"
-    max-age: 3600
-  # 安全配置
-  security:
-    ignore-urls:
-      - /api/auth/login
-      - /api/auth/register
-      - /api/common/captcha
-      - /druid/**
-
-# 将这些配置添加到 application.yml 文件
-
-# Actuator 配置
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: always
-      probes:
-        enabled: true
-      group:
-        liveness:
-          include: livenessState,redis,mysql
-        readiness:
-          include: readinessState,redis,mysql
-  health:
-    db:
-      enabled: true
-    redis:
-      enabled: true
-  info:
-    env:
-      enabled: true
-    java:
-      enabled: true
-    os:
-      enabled: true
-
-# 应用信息配置
-info:
-  app:
-    name: ${spring.application.name}
-    description: WeChat Mini Program Backend Service
-    version: 1.0.0
-    java-version: ${java.version}
-    spring-boot-version: ${spring-boot.version}
+# API客户端密钥配置
+api:
+  keys:
+    client1: 94a08da1fecbb6e8b46990538c7b50b2
+    client2: 53c234e5e8472b6ac51c1ae1cab3fe06
+    partner-service: 976f22a5e4d3fdb893dbfcac398d96cf

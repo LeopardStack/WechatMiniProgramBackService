@@ -3,6 +3,7 @@ package com.scnu.wechatminiprogrambackservice.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -10,7 +11,9 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("user")
-public class UserPO {
+public class User implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * 用户ID，使用雪花算法生成

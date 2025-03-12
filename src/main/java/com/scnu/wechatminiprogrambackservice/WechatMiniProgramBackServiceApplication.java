@@ -9,5 +9,4 @@ public class WechatMiniProgramBackServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(WechatMiniProgramBackServiceApplication.class, args);
     }
-
 }
