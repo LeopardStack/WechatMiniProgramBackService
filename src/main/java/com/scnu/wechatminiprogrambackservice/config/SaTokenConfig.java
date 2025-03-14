@@ -26,7 +26,8 @@ public class SaTokenConfig implements WebMvcConfigurer {
             // 指定需要登录认证的路径
             SaRouter.match("/**")
                     // 排除登录接口、公开接口等
-                    .notMatch("/auth/api-token", "/auth/login", "/auth/register", "/public/**")  // 确保添加了 /auth/api-token
+                    .notMatch("/auth/api-token", "/auth/login", "/auth/register", "/public/**",
+                            "/question/**")  // 确保添加了 /auth/api-token
                     // 检查是否登录
                     .check(r -> StpUtil.checkLogin());
         })).addPathPatterns("/**");

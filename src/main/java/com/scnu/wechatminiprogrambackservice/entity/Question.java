@@ -13,7 +13,7 @@ public class Question {
     /**
      * 用户ID，使用雪花算法生成
      */
-    @TableId(type = IdType.ASSIGN_ID)
+    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
     //0是 1否 2不知道

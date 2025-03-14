@@ -6,18 +6,70 @@ import com.scnu.wechatminiprogrambackservice.entity.Question;
 import com.scnu.wechatminiprogrambackservice.mapper.QuestionMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
 @RequestMapping("/question")
+@EnableAsync
 public class QuestionController {
 
     @Resource
     private QuestionMapper questionMapper;
+
+    @PostMapping("/{filename}")
+    public ResponseEntity<FileSystemResource> getMusic(@PathVariable String filename) {
+        File file = new File("/music", filename);
+
+        if (!file.exists() || !file.isFile()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName());
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+
+        return ResponseEntity.ok()
+                        .headers(headers)
+                        .contentLength(file.length())
+                        .contentType(MediaType.parseMediaType("audio/mpeg"))
+                        .body(new FileSystemResource(file));
+
+    }
+
+    @PostMapping("/list")
+    public ResponseEntity<List<String>> listMusicFiles() {
+        File folder = new File("/music");
+        if (!folder.exists() || !folder.isDirectory()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".mp3"));
+        if (files == null) {
+            return new ResponseEntity<>(Collections.emptyList(), HttpStatus.OK);
+        }
+
+        List<String> filenames = Arrays.stream(files)
+                .map(File::getName)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(filenames);
+    }
 
     @PostMapping("/save")
     public SaResult save(@RequestBody Question question) {
@@ -30,21 +82,25 @@ public class QuestionController {
         // 计算总分
         int totalScore = calculateScore(question);
         question.setCount(totalScore);
-        // 插入数据库
+
+        // 异步插入数据库
+        insertQuestionAsync(question);
+
+        return SaResult.data(totalScore);
+    }
+
+    @Async
+    public void insertQuestionAsync(Question question) {
         int insertResult = questionMapper.insert(question);
         if (insertResult > 0) {
-            log.info("用户填写记录入库成功: " + question);
-            return SaResult.ok("总分为：" + totalScore);
+            log.info("用户填写记录入库成功: {}", question);
         } else {
-            return SaResult.error("记录入库失败");
+            log.error("记录入库失败: {}", question);
         }
     }
 
     private int calculateScore(Question question) {
-        int score = 0;
-
-        // 使用循环遍历所有问题字段并计算分数
-        Integer[] questions = {
+        List<Integer> answers = Arrays.asList(
                 question.getQuestion1(),
                 question.getQuestion2(),
                 question.getQuestion3(),
@@ -53,15 +109,12 @@ public class QuestionController {
                 question.getQuestion6(),
                 question.getQuestion7(),
                 question.getQuestion8()
-        };
+        );
 
-        for (Integer q : questions) {
-            if (isValidAnswer(q)) {
-                score += getScoreForAnswer(q);
-            }
-        }
-
-        return score;
+        return answers.stream()
+                .filter(this::isValidAnswer)
+                .mapToInt(this::getScoreForAnswer)
+                .sum();
     }
 
     private boolean isValidAnswer(Integer answer) {
@@ -73,8 +126,8 @@ public class QuestionController {
     }
 
     private SaResult validParams(Question question) {
-        // 验证每个问题字段
-        Integer[] questions = {
+        // 验证问题字段
+        List<Integer> questions = Arrays.asList(
                 question.getQuestion1(),
                 question.getQuestion2(),
                 question.getQuestion3(),
@@ -83,12 +136,10 @@ public class QuestionController {
                 question.getQuestion6(),
                 question.getQuestion7(),
                 question.getQuestion8()
-        };
+        );
 
-        for (int i = 0; i < questions.length; i++) {
-            if (!isValidQuestion(questions[i])) {
-                return SaResult.error("Invalid value for question" + (i + 1));
-            }
+        if (!questions.stream().allMatch(this::isValidQuestion)) {
+            return SaResult.error("Invalid value for one or more questions");
         }
 
         // 验证其他字段
@@ -127,5 +178,4 @@ public class QuestionController {
     private boolean isValidCount(Integer count) {
         return count >= 0 && count <= 1000;
     }
-
 }
