@@ -152,6 +152,9 @@ public class QuestionController {
         if (question.getAge() != null && !isValidAge(question.getAge())) {
             return SaResult.error("Invalid value for age");
         }
+        if (question.getName() != null && !isValidAName(question.getName())) {
+            return SaResult.error("Invalid value for age");
+        }
         if (question.getCount() != null && !isValidCount(question.getCount())) {
             return SaResult.error("Invalid value for count");
         }
@@ -164,11 +167,31 @@ public class QuestionController {
     }
 
     private boolean isValidPhone(String phone) {
-        return phone != null && phone.length() == 11;
+        // 首先检查电话号码是否为空以及长度是否为11位
+        if (phone == null || phone.length() != 11) return false;
+        // 检查第一位是否是1
+        if (phone.charAt(0) != '1') return false;
+
+        // 检查第二位是否在3到9之间
+        int secondDigit = phone.charAt(1) - '0';
+        if (secondDigit < 3 || secondDigit > 9) return false;
+
+        // 尝试将剩下的字符全部转换为数字，如果有任何非数字字符，则返回false
+        try {
+            Long.parseLong(phone.substring(2));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+
+        return true;
     }
 
     private boolean isValidGender(Integer gender) {
         return gender == 0 || gender == 1;
+    }
+
+    private boolean isValidAName(String name) {
+        return  name.length() <= 20;
     }
 
     private boolean isValidAge(Integer age) {
