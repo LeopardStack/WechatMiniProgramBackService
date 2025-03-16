@@ -4,6 +4,7 @@ package com.scnu.wechatminiprogrambackservice.controller;
 import cn.dev33.satoken.util.SaResult;
 import com.scnu.wechatminiprogrambackservice.entity.Question;
 import com.scnu.wechatminiprogrambackservice.mapper.QuestionMapper;
+import com.scnu.wechatminiprogrambackservice.model.CountRangeStat;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
@@ -16,6 +17,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +32,64 @@ public class QuestionController {
 
     @Resource
     private QuestionMapper questionMapper;
+
+    @PostMapping("/getCountResult")
+    public SaResult getCountResult() {
+
+        Integer normal = questionMapper.countNormal();
+        Integer drop = questionMapper.countDrop();
+        Integer damage = questionMapper.countDamage();
+        // 计算总数
+        int total = normal + drop + damage;
+
+        CountRangeStat countRangeStat = new CountRangeStat();
+        countRangeStat.setNormal(normal);
+        countRangeStat.setDrop(drop);
+        countRangeStat.setDamage(damage);
+
+        // 计算图1比率
+        if (total > 0) {
+            countRangeStat.setNormalRate(formatToTwoDecimalPlaces((double) normal / total));
+            countRangeStat.setDropRate(formatToTwoDecimalPlaces((double) drop / total));
+            countRangeStat.setDamageRate(formatToTwoDecimalPlaces((double) damage / total));
+        }else{
+            countRangeStat.setNormalRate(0.0);
+            countRangeStat.setDropRate(0.0);
+            countRangeStat.setDamageRate(0.0);
+        }
+
+        Integer maleCount=questionMapper.countMale();
+        Integer femaleCount=questionMapper.countFemale();
+        int total1 = maleCount+femaleCount;
+        countRangeStat.setMaleCount(maleCount);
+        countRangeStat.setFemaleCount(femaleCount);
+        countRangeStat.setMaleCountRate(formatToTwoDecimalPlaces((double) maleCount / total1));
+        countRangeStat.setFemaleCountRate(formatToTwoDecimalPlaces((double) femaleCount / total1));
+
+
+        Integer maleNormal = questionMapper.countMaleNormal();
+        Integer femaleNormal = questionMapper.countFemaleNormal();
+        Integer maleDrop = questionMapper.countMaleDrop();
+        Integer femaleDrop = questionMapper.countFemaleDrop();
+        Integer maleDamage = questionMapper.countMaleDamage();
+        Integer femaleDamage = questionMapper.countFemaleDamage();
+
+        countRangeStat.setMalenormalRate(formatToTwoDecimalPlaces((double) maleNormal / maleNormal+femaleNormal));
+        countRangeStat.setFemalenormalRate(formatToTwoDecimalPlaces((double) femaleNormal / maleNormal+femaleNormal));
+        countRangeStat.setMaledropRate(formatToTwoDecimalPlaces((double) maleDrop / maleDrop+femaleDrop));
+        countRangeStat.setFemaledropRate((double) femaleDrop / maleDrop+femaleDrop);
+        countRangeStat.setMaledamageRate((double) maleDamage / maleDamage+femaleDamage);
+        countRangeStat.setFemaledamageRate((double) femaleDamage / maleDamage+femaleDamage);
+
+
+
+        return null;
+    }
+    private Double formatToTwoDecimalPlaces(double value) {
+        BigDecimal bd = new BigDecimal(Double.toString(value));
+        bd = bd.setScale(2, RoundingMode.HALF_UP);
+        return bd.doubleValue();
+    }
 
     @PostMapping("/{filename}")
     public ResponseEntity<FileSystemResource> getMusic(@PathVariable String filename) {
@@ -45,10 +106,10 @@ public class QuestionController {
         headers.add("Expires", "0");
 
         return ResponseEntity.ok()
-                        .headers(headers)
-                        .contentLength(file.length())
-                        .contentType(MediaType.parseMediaType("audio/mpeg"))
-                        .body(new FileSystemResource(file));
+                .headers(headers)
+                .contentLength(file.length())
+                .contentType(MediaType.parseMediaType("audio/mpeg"))
+                .body(new FileSystemResource(file));
 
     }
 
