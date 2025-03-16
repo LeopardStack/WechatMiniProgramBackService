@@ -6,6 +6,7 @@ import cn.dev33.satoken.exception.NotRoleException;
 import com.scnu.wechatminiprogrambackservice.model.ApiResult;
 import com.scnu.wechatminiprogrambackservice.model.R;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbortException(ClientAbortException e) {
+        // 记录警告级别的日志
+        log.warn("Client aborted connection: {}", e.getMessage());
+    }
 
     /**
      * 处理无权限异常

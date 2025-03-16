@@ -1,6 +1,8 @@
 server:
   port: 8080
-#  ssl:
+  tomcat:
+    connection-timeout: 20000
+  #  ssl:
 #    key-store-password: d9veswcu
 #    key-store-type: JKS
 #    key-store: classpath:trxxguidance.xyz.jks
