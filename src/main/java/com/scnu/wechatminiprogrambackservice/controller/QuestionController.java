@@ -5,6 +5,7 @@ import cn.dev33.satoken.util.SaResult;
 import com.scnu.wechatminiprogrambackservice.entity.Question;
 import com.scnu.wechatminiprogrambackservice.mapper.QuestionMapper;
 import com.scnu.wechatminiprogrambackservice.model.CountRangeStat;
+import com.scnu.wechatminiprogrambackservice.model.Location;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
@@ -74,16 +75,17 @@ public class QuestionController {
         Integer maleDamage = questionMapper.countMaleDamage();
         Integer femaleDamage = questionMapper.countFemaleDamage();
 
-        countRangeStat.setMalenormalRate(formatToTwoDecimalPlaces((double) maleNormal / maleNormal+femaleNormal));
-        countRangeStat.setFemalenormalRate(formatToTwoDecimalPlaces((double) femaleNormal / maleNormal+femaleNormal));
-        countRangeStat.setMaledropRate(formatToTwoDecimalPlaces((double) maleDrop / maleDrop+femaleDrop));
-        countRangeStat.setFemaledropRate((double) femaleDrop / maleDrop+femaleDrop);
-        countRangeStat.setMaledamageRate((double) maleDamage / maleDamage+femaleDamage);
-        countRangeStat.setFemaledamageRate((double) femaleDamage / maleDamage+femaleDamage);
+        countRangeStat.setMaleNormalRate(formatToTwoDecimalPlaces((double) maleNormal / maleCount));
+        countRangeStat.setFemaleNormalRate(formatToTwoDecimalPlaces((double) femaleNormal / femaleCount));
+        countRangeStat.setMaleDropRate(formatToTwoDecimalPlaces((double) maleDrop / maleCount));
+        countRangeStat.setFemaleDropRate((double) femaleDrop / femaleCount);
+        countRangeStat.setMaleDamageRate((double) maleDamage / maleCount);
+        countRangeStat.setFemaleDamageRate((double) femaleDamage / femaleCount);
 
+        List<Location> locations = questionMapper.countLocation();
+        countRangeStat.setLocations(locations);
 
-
-        return null;
+        return SaResult.data(countRangeStat);
     }
     private Double formatToTwoDecimalPlaces(double value) {
         BigDecimal bd = new BigDecimal(Double.toString(value));

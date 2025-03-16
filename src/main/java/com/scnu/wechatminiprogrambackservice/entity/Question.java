@@ -33,6 +33,9 @@ public class Question {
 
     private Integer question8;
 
+    private String province;
+    private String city;
+
     //限制11位数字
     private String phone;
 
