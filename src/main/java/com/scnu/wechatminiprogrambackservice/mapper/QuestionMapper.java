@@ -2,6 +2,7 @@ package com.scnu.wechatminiprogrambackservice.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.scnu.wechatminiprogrambackservice.entity.Question;
+import com.scnu.wechatminiprogrambackservice.model.CountRangeStatSummary;
 import com.scnu.wechatminiprogrambackservice.model.Location;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -11,6 +12,21 @@ import java.util.List;
 
 @Mapper
 public interface QuestionMapper extends BaseMapper<Question> {
+
+    @Select("SELECT " +
+            "SUM(CASE WHEN count IN (1, 2) THEN 1 ELSE 0 END) AS normal, " +
+            "SUM(CASE WHEN count IN (3, 4) THEN 1 ELSE 0 END) AS 'drop', " +
+            "SUM(CASE WHEN count >= 5 THEN 1 ELSE 0 END) AS damage, " +
+            "SUM(CASE WHEN gender = 0 AND count IN (1, 2) THEN 1 ELSE 0 END) AS maleNormal, " +
+            "SUM(CASE WHEN gender = 1 AND count IN (1, 2) THEN 1 ELSE 0 END) AS femaleNormal, " +
+            "SUM(CASE WHEN gender = 0 AND count IN (3, 4) THEN 1 ELSE 0 END) AS maleDrop, " +
+            "SUM(CASE WHEN gender = 1 AND count IN (3, 4) THEN 1 ELSE 0 END) AS femaleDrop, " +
+            "SUM(CASE WHEN gender = 0 AND count >= 5 THEN 1 ELSE 0 END) AS maleDamage, " +
+            "SUM(CASE WHEN gender = 1 AND count >= 5 THEN 1 ELSE 0 END) AS femaleDamage, " +
+            "SUM(CASE WHEN gender = 0 THEN 1 ELSE 0 END) AS maleCount, " +
+            "SUM(CASE WHEN gender = 1 THEN 1 ELSE 0 END) AS femaleCount " +
+            "FROM question")
+    CountRangeStatSummary getCountSummary();
 
     @Select("SELECT COUNT(DISTINCT id) AS people_count FROM question " +
             "WHERE count IN (1, 2)")

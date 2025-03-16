@@ -5,6 +5,7 @@ import cn.dev33.satoken.util.SaResult;
 import com.scnu.wechatminiprogrambackservice.entity.Question;
 import com.scnu.wechatminiprogrambackservice.mapper.QuestionMapper;
 import com.scnu.wechatminiprogrambackservice.model.CountRangeStat;
+import com.scnu.wechatminiprogrambackservice.model.CountRangeStatSummary;
 import com.scnu.wechatminiprogrambackservice.model.Location;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -36,57 +40,86 @@ public class QuestionController {
 
     @PostMapping("/getCountResult")
     public SaResult getCountResult() {
+        try {
+            CountRangeStat countRangeStat = new CountRangeStat();
+            CountRangeStatSummary summary = questionMapper.getCountSummary();
 
-        Integer normal = questionMapper.countNormal();
-        Integer drop = questionMapper.countDrop();
-        Integer damage = questionMapper.countDamage();
-        // 计算总数
-        int total = normal + drop + damage;
+            // 计算总数
+            int total = calculateAndSetRates(countRangeStat,
+                    summary.getNormal(),
+                    summary.getDrop(),
+                    summary.getDamage());
 
-        CountRangeStat countRangeStat = new CountRangeStat();
-        countRangeStat.setNormal(normal);
-        countRangeStat.setDrop(drop);
-        countRangeStat.setDamage(damage);
+            // 计算男女数量及比率
+            int totalGender = calculateAndSetGenderRates(countRangeStat,
+                    summary.getMaleCount(),
+                    summary.getFemaleCount());
 
-        // 计算图1比率
-        if (total > 0) {
-            countRangeStat.setNormalRate(formatToTwoDecimalPlaces((double) normal / total));
-            countRangeStat.setDropRate(formatToTwoDecimalPlaces((double) drop / total));
-            countRangeStat.setDamageRate(formatToTwoDecimalPlaces((double) damage / total));
-        }else{
-            countRangeStat.setNormalRate(0.0);
-            countRangeStat.setDropRate(0.0);
-            countRangeStat.setDamageRate(0.0);
+            // 设置男女性别下的正常、掉落、损坏比率
+            setGenderSpecificRates(countRangeStat,
+                    summary.getMaleNormal(),
+                    summary.getFemaleNormal(),
+                    summary.getMaleDrop(),
+                    summary.getFemaleDrop(),
+                    summary.getMaleDamage(),
+                    summary.getFemaleDamage());
+
+            // 获取位置统计数据
+            List<Location> locations = questionMapper.countLocation();
+            countRangeStat.setLocations(locations);
+
+            return SaResult.data(countRangeStat);
+        } catch (Exception e) {
+            log.error("Error occurred while getting count result", e);
+            return SaResult.error("Internal server error");
         }
-
-        Integer maleCount=questionMapper.countMale();
-        Integer femaleCount=questionMapper.countFemale();
-        int total1 = maleCount+femaleCount;
-        countRangeStat.setMaleCount(maleCount);
-        countRangeStat.setFemaleCount(femaleCount);
-        countRangeStat.setMaleCountRate(formatToTwoDecimalPlaces((double) maleCount / total1));
-        countRangeStat.setFemaleCountRate(formatToTwoDecimalPlaces((double) femaleCount / total1));
-
-
-        Integer maleNormal = questionMapper.countMaleNormal();
-        Integer femaleNormal = questionMapper.countFemaleNormal();
-        Integer maleDrop = questionMapper.countMaleDrop();
-        Integer femaleDrop = questionMapper.countFemaleDrop();
-        Integer maleDamage = questionMapper.countMaleDamage();
-        Integer femaleDamage = questionMapper.countFemaleDamage();
-
-        countRangeStat.setMaleNormalRate(formatToTwoDecimalPlaces((double) maleNormal / maleCount));
-        countRangeStat.setFemaleNormalRate(formatToTwoDecimalPlaces((double) femaleNormal / femaleCount));
-        countRangeStat.setMaleDropRate(formatToTwoDecimalPlaces((double) maleDrop / maleCount));
-        countRangeStat.setFemaleDropRate((double) femaleDrop / femaleCount);
-        countRangeStat.setMaleDamageRate((double) maleDamage / maleCount);
-        countRangeStat.setFemaleDamageRate((double) femaleDamage / femaleCount);
-
-        List<Location> locations = questionMapper.countLocation();
-        countRangeStat.setLocations(locations);
-
-        return SaResult.data(countRangeStat);
     }
+
+    private int calculateAndSetRates(CountRangeStat stat, Integer normal, Integer drop, Integer damage) {
+        int total = normal + drop + damage;
+        if (total > 0) {
+            stat.setNormalRate(formatToTwoDecimalPlaces((double) normal / total));
+            stat.setDropRate(formatToTwoDecimalPlaces((double) drop / total));
+            stat.setDamageRate(formatToTwoDecimalPlaces((double) damage / total));
+        } else {
+            stat.setNormalRate(0.0);
+            stat.setDropRate(0.0);
+            stat.setDamageRate(0.0);
+        }
+        stat.setNormal(normal);
+        stat.setDrop(drop);
+        stat.setDamage(damage);
+        return total;
+    }
+
+    private int calculateAndSetGenderRates(CountRangeStat stat, Integer maleCount, Integer femaleCount) {
+        int total = maleCount + femaleCount;
+        if (total > 0) {
+            stat.setMaleCountRate(formatToTwoDecimalPlaces((double) maleCount / total));
+            stat.setFemaleCountRate(formatToTwoDecimalPlaces((double) femaleCount / total));
+        } else {
+            stat.setMaleCountRate(0.0);
+            stat.setFemaleCountRate(0.0);
+        }
+        stat.setMaleCount(maleCount);
+        stat.setFemaleCount(femaleCount);
+        return total;
+    }
+
+    private void setGenderSpecificRates(CountRangeStat stat, Integer maleNormal, Integer femaleNormal,
+                                        Integer maleDrop, Integer femaleDrop,
+                                        Integer maleDamage, Integer femaleDamage) {
+        int maleTotal = stat.getMaleCount();
+        int femaleTotal = stat.getFemaleCount();
+
+        stat.setMaleNormalRate(formatToTwoDecimalPlaces((double) maleNormal / maleTotal));
+        stat.setFemaleNormalRate(formatToTwoDecimalPlaces((double) femaleNormal / femaleTotal));
+        stat.setMaleDropRate(formatToTwoDecimalPlaces((double) maleDrop / maleTotal));
+        stat.setFemaleDropRate(formatToTwoDecimalPlaces((double) femaleDrop / femaleTotal));
+        stat.setMaleDamageRate(formatToTwoDecimalPlaces((double) maleDamage / maleTotal));
+        stat.setFemaleDamageRate(formatToTwoDecimalPlaces((double) femaleDamage / femaleTotal));
+    }
+
     private Double formatToTwoDecimalPlaces(double value) {
         BigDecimal bd = new BigDecimal(Double.toString(value));
         bd = bd.setScale(2, RoundingMode.HALF_UP);
@@ -95,70 +128,64 @@ public class QuestionController {
 
     @PostMapping("/{filename}")
     public ResponseEntity<FileSystemResource> getMusic(@PathVariable String filename) {
-        File file = new File("/music", filename);
+        try {
+            Path musicPath = Paths.get("/music", filename).normalize();
 
-        if (!file.exists() || !file.isFile()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            if (!Files.exists(musicPath) || !Files.isRegularFile(musicPath)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            File file = musicPath.toFile();
+            // 设置响应头
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getName() + "\"");
+            headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+            headers.add("Pragma", "no-cache");
+            headers.add("Expires", "0");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentLength(file.length())
+                    .contentType(MediaType.parseMediaType("audio/mpeg"))
+                    .body(new FileSystemResource(file));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName());
-        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
-        headers.add("Pragma", "no-cache");
-        headers.add("Expires", "0");
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentLength(file.length())
-                .contentType(MediaType.parseMediaType("audio/mpeg"))
-                .body(new FileSystemResource(file));
-
     }
 
-    @PostMapping("/list")
-    public ResponseEntity<List<String>> listMusicFiles() {
-        File folder = new File("/music");
-        if (!folder.exists() || !folder.isDirectory()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-
-        File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".mp3"));
-        if (files == null) {
-            return new ResponseEntity<>(Collections.emptyList(), HttpStatus.OK);
-        }
-
-        List<String> filenames = Arrays.stream(files)
-                .map(File::getName)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(filenames);
-    }
 
     @PostMapping("/save")
     public SaResult save(@RequestBody Question question) {
-        // 校验参数
-        SaResult validationResult = validParams(question);
-        if (validationResult != null) {
-            return validationResult;
+        try {// 校验参数
+            SaResult validationResult = validParams(question);
+            if (validationResult != null) {
+                return validationResult;
+            }
+            // 计算总分
+            int totalScore = calculateScore(question);
+            question.setCount(totalScore);
+
+            insertQuestionAsync(question);
+            return SaResult.data(totalScore);
+        } catch (Exception e) {
+            log.error("Error occurred while saving question: {}", e.getMessage(), e);
+            return SaResult.error("Internal server error");
         }
-
-        // 计算总分
-        int totalScore = calculateScore(question);
-        question.setCount(totalScore);
-
-        // 异步插入数据库
-        insertQuestionAsync(question);
-
-        return SaResult.data(totalScore);
     }
 
     @Async
     public void insertQuestionAsync(Question question) {
-        int insertResult = questionMapper.insert(question);
-        if (insertResult > 0) {
-            log.info("用户填写记录入库成功: {}", question);
-        } else {
-            log.error("记录入库失败: {}", question);
+        try {
+            int insertResult = questionMapper.insert(question);
+            if (insertResult > 0) {
+                log.info("用户填写记录入库成功: {}", question);
+            } else {
+                log.error("记录入库失败: {}", question);
+            }
+        } catch (Exception e) {
+            log.error(question+"异步插入数据库失败: {}", e.getMessage(), e);
         }
     }
 
