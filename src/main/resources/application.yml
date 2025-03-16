@@ -1,5 +1,9 @@
 server:
   port: 8080
+  ssl:
+    key-store-password: d9veswcu
+    key-store-type: JKS
+    key-store: classpath:trxxguidance.xyz.jks
   servlet:
     context-path: /api
 
