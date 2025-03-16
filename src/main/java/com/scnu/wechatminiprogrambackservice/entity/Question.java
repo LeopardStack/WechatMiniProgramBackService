@@ -46,6 +46,9 @@ public class Question {
     //只能0-1000
     private Integer count;
 
+    private String province;
+    private String city;
+
     //多留字段防止多次上线
     private String param1;
 
