@@ -132,8 +132,13 @@ public class QuestionController {
             Path musicPath = Paths.get("/music", filename).normalize();
             log.info("Original path: {}", Paths.get("/music", filename));
             log.info("Resolved path: {}", musicPath.toString());
-            if (!Files.exists(musicPath) || !Files.isRegularFile(musicPath)) {
+            if (!Files.exists(musicPath)) {
                 log.warn("File does not exist: {}", musicPath.toString());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            if (!Files.isRegularFile(musicPath)) {
+                log.warn("Path is not a regular file: {}", musicPath.toString());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
