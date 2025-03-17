@@ -126,7 +126,7 @@ public class QuestionController {
         return bd.doubleValue();
     }
 
-    @PostMapping("/{filename}")
+    @GetMapping("/{filename}")
     public ResponseEntity<FileSystemResource> getMusic(@PathVariable String filename) {
         try {
             Path musicPath = Paths.get("/music", filename).normalize();
