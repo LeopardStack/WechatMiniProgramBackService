@@ -7,7 +7,10 @@ import com.scnu.wechatminiprogrambackservice.mapper.QuestionMapper;
 import com.scnu.wechatminiprogrambackservice.model.CountRangeStat;
 import com.scnu.wechatminiprogrambackservice.model.CountRangeStatSummary;
 import com.scnu.wechatminiprogrambackservice.model.Location;
+import com.scnu.wechatminiprogrambackservice.service.RateLimitService;
+import com.scnu.wechatminiprogrambackservice.util.IpUtils;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
@@ -25,9 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -37,6 +38,9 @@ public class QuestionController {
 
     @Resource
     private QuestionMapper questionMapper;
+
+    @Resource
+    private RateLimitService rateLimitService;
 
     @PostMapping("/getCountResult")
     public SaResult getCountResult() {
@@ -164,8 +168,10 @@ public class QuestionController {
 
 
     @PostMapping("/save")
-    public SaResult save(@RequestBody Question question) {
+    public SaResult save(@RequestBody Question question, HttpServletRequest request) {
         try {// 校验参数
+            rateLimitService.limitIpInSeconds(IpUtils.getIpAddr(request),60,5);
+
             SaResult validationResult = validParams(question);
             if (validationResult != null) {
                 return validationResult;
@@ -192,7 +198,7 @@ public class QuestionController {
                 log.error("记录入库失败: {}", question);
             }
         } catch (Exception e) {
-            log.error(question+"异步插入数据库失败: {}", e.getMessage(), e);
+            log.error(question + "异步插入数据库失败: {}", e.getMessage(), e);
         }
     }
 
@@ -288,7 +294,7 @@ public class QuestionController {
     }
 
     private boolean isValidAName(String name) {
-        return  name.length() <= 20;
+        return name.length() <= 20;
     }
 
     private boolean isValidAge(Integer age) {
