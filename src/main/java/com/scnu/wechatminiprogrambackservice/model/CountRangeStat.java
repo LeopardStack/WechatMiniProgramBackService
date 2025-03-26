@@ -21,16 +21,15 @@ public class CountRangeStat {
     private Integer femaleCount;
     private Double femaleCountRate;
 
-    private Double malenormalRate;
-    private Double maledropRate;
-    private Double maledamageRate;
-    private Double femalenormalRate;
-    private Double femaledropRate;
-    private Double femaledamageRate;
+    private Double maleNormalRate;
+    private Double maleDropRate;
+    private Double maleDamageRate;
+    private Double femaleNormalRate;
+    private Double femaleDropRate;
+    private Double femaleDamageRate;
 
     //第三张图需要数据
-    private List<String> province;
-    private List<Integer> provinceCount;
+    private List<Location> locations;
 
 
 }
