@@ -31,5 +31,9 @@ public class CountRangeStat {
     //第三张图需要数据
     private List<Location> locations;
 
+    //统计维度
+    private Integer dayCount;
+    private Integer monthCount;
+    private Integer allConut;
 
 }

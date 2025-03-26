@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 @TableName("question")
 public class Question {
@@ -59,5 +61,5 @@ public class Question {
 
     private String param3;
 
-
+    private Date time;
 }

@@ -71,6 +71,9 @@ public class QuestionController {
             // 获取位置统计数据
             List<Location> locations = questionMapper.countLocation();
             countRangeStat.setLocations(locations);
+            countRangeStat.setDayCount(questionMapper.countDailyQuestions());
+            countRangeStat.setMonthCount(questionMapper.countMonthlyQuestions());
+            countRangeStat.setAllConut(questionMapper.countAllQuestions());
 
             return SaResult.data(countRangeStat);
         } catch (Exception e) {

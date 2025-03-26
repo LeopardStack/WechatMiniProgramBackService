@@ -75,4 +75,12 @@ public interface QuestionMapper extends BaseMapper<Question> {
     List<Location> countLocation();
 
 
+    @Select("SELECT COUNT(*) AS daily_count FROM question WHERE DATE(time) = CURDATE();")
+    Integer countDailyQuestions();
+
+    @Select("SELECT COUNT(*) AS monthly_count FROM question WHERE YEAR(time) = YEAR(CURDATE()) AND MONTH(time) = MONTH(CURDATE());")
+    Integer countMonthlyQuestions();
+
+    @Select("SELECT COUNT(*)  FROM question;")
+    Integer countAllQuestions();
 }
