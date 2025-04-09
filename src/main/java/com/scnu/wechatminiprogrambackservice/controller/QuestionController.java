@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -173,8 +174,9 @@ public class QuestionController {
     @PostMapping("/save")
     public SaResult save(@RequestBody Question question, HttpServletRequest request) {
         try {// 校验参数
-            rateLimitService.limitIpInSeconds(IpUtils.getIpAddr(request),60,5);
+//            rateLimitService.limitIpInSeconds(IpUtils.getIpAddr(request),60,5);
 
+            question.setTime(new Date());
             SaResult validationResult = validParams(question);
             if (validationResult != null) {
                 return validationResult;
