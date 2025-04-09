@@ -54,6 +54,8 @@ public class Question {
     //无教育、小学、初中、高中、大专、本科、硕士及以上
     private String degree;
 
+    private String organization;
+
     //多留字段防止多次上线
     private String param1;
 
